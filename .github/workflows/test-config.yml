@@ -2,7 +2,7 @@ name: test config
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - '**.yaml'
       - '**.yml'
