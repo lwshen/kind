@@ -26,5 +26,18 @@ jobs:
           kubectl get nodes
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm install my-release bitnami/nginx
-          sleep 60
-          kubectl get pods
+          kubectl wait deployment --all --for=condition=available --timeout=120s
+      - name: Install failed, show platform logs
+          if: ${{ failure() }}
+          run: |
+          kubectl get pods | awk '{print $1}' | xargs -n1 kubectl logs\
+      - name: Run Sanity check
+          timeout-minutes: 5
+          run: |
+          kubectl apply -n default -f https://raw.githubusercontent.com/istio/istio/release-1.11/samples/bookinfo/platform/kube/bookinfo.yaml
+          kubectl apply -n default -f examples/kubernetes/servicemesh/basic-ingress.yaml
+          kubectl wait -n default --for=condition=Ready --all pod --timeout=${{ env.timeout }}
+          
+          lb=$(kubectl get ingress basic-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- http://"$lb"
+          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- http://"$lb"/details/1
