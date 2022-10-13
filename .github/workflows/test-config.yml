@@ -37,7 +37,7 @@ jobs:
           kubectl get pods | awk '{print $1}' | xargs -n1 kubectl logs
 
       - name: Query EXTERNAL_IP for staging
-        timeout-minutes: 5
+        timeout-minutes: 30
         run: |
           set -x
           NAMESPACE="default"
@@ -45,8 +45,8 @@ jobs:
             kubectl get service my-release-nginx --namespace $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
           }
           until [[ -n "$(get_externalIP)" ]]; do
-            echo "Querying for external IP for my-release-nginx on namespace: $NAMESPACE{}"
-          sleep 3
+            echo "Querying for external IP for my-release-nginx on namespace: $NAMESPACE: $(get_externalIP)"
+          sleep 10
           done
           EXTERNAL_IP=$(get_externalIP)
           echo "::set-env name=EXTERNAL_IP::$EXTERNAL_IP"
