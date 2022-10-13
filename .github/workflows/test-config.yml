@@ -1,5 +1,6 @@
 name: test config
 on:
+  pull_request:
   push:
     branches:
       - main
