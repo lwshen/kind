@@ -39,10 +39,8 @@ jobs:
       - name: Run Sanity check
         timeout-minutes: 5
         run: |
-          kubectl apply -n default -f https://raw.githubusercontent.com/istio/istio/release-1.11/samples/bookinfo/platform/kube/bookinfo.yaml
-          kubectl apply -n default -f examples/kubernetes/servicemesh/basic-ingress.yaml
-          kubectl wait -n default --for=condition=Ready --all pod --timeout=${{ env.timeout }}
-
-          lb=$(kubectl get ingress basic-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- http://"$lb"
-          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- http://"$lb"/details/1
+          export SERVICE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].port}" services my-release-nginx)
+          export SERVICE_IP=$(kubectl get svc --namespace default my-release-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          export URL=http://${SERVICE_IP}:${SERVICE_PORT}
+          echo "${URL}"
+          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- ${URL}
