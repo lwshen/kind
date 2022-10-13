@@ -1,4 +1,4 @@
-name: install
+name: test config
 on:
   push:
     branches:

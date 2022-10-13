@@ -1,4 +1,4 @@
-name: install
+name: test config-simple
 on:
   push:
     branches:
