@@ -14,17 +14,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: install kind
+
+      - name: Install kind
         uses: helm/kind-action@v1.3.0
         with:
           config: config-simple.yaml
           version:
-      - name: install helm
+
+      - name: Install helm
         uses: azure/setup-helm@v3
+
       - name: Test
         run: |
           kubectl get nodes
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm install my-release bitnami/nginx
-          sleep 60
-          kubectl get pods
+          kubectl wait deployment --all --for=condition=available --timeout=240s
+          kubectl get svc
+          kubectl get pod
+
+      - name: Install failed, show platform logs
+        if: ${{ failure() }}
+        run: |
+          kubectl get pods | awk '{print $1}' | xargs -n1 kubectl logs
