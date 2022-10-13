@@ -39,6 +39,9 @@ jobs:
       - name: Run Sanity check
         timeout-minutes: 5
         run: |
+          kubectl get ingress
+          kubectl get svc
+          kubectl get pod
           export SERVICE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].port}" services my-release-nginx)
           export SERVICE_IP=$(kubectl get svc --namespace default my-release-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
           export URL=http://${SERVICE_IP}:${SERVICE_PORT}
