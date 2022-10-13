@@ -15,13 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: install kind
+      - name: Install kind
         uses: helm/kind-action@v1.3.0
         with:
           config: config-simple.yaml
           version:
 
-      - name: install helm
+      - name: Install helm
         uses: azure/setup-helm@v3
 
       - name: Test
@@ -29,71 +29,11 @@ jobs:
           kubectl get nodes
           helm repo add bitnami https://charts.bitnami.com/bitnami
           helm install my-release bitnami/nginx
-          kubectl wait deployment --all --for=condition=available --timeout=120s
+          kubectl wait deployment --all --for=condition=available --timeout=240s
+          kubectl get svc
+          kubectl get pod
 
       - name: Install failed, show platform logs
         if: ${{ failure() }}
         run: |
           kubectl get pods | awk '{print $1}' | xargs -n1 kubectl logs
-
-      - name: Query EXTERNAL_IP for staging
-        timeout-minutes: 30
-        run: |
-          set -x
-          NAMESPACE="default"
-          get_externalIP() {
-            kubectl get service my-release-nginx --namespace $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-          }
-          until [[ -n "$(get_externalIP)" ]]; do
-            echo "Querying for external IP for my-release-nginx on namespace: $NAMESPACE: $(get_externalIP)"
-          sleep 10
-          done
-          EXTERNAL_IP=$(get_externalIP)
-          echo "::set-env name=EXTERNAL_IP::$EXTERNAL_IP"
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-
-      - name: Run Sanity check
-        timeout-minutes: 5
-        run: |
-          kubectl get ingress
-          kubectl get svc
-          kubectl get pod
-          kubectl wait deployment --all --for=condition=available --timeout=120s
-          export SERVICE_PORT=$(kubectl get --namespace default -o jsonpath="{.spec.ports[0].port}" services my-release-nginx)
-          export SERVICE_IP=$(kubectl get svc --namespace default my-release-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          export URL=http://${SERVICE_IP}:${SERVICE_PORT}
-          echo "${URL}"
-          curl -s -v --connect-timeout 5 --max-time 20 --retry 3 --fail -- ${URL}
-      
-      # - name: Smoke Test
-      #   timeout-minutes: 5
-      #   run: |
-      #     set -x
-      #     # start fresh loadgenerator pod
-      #     # kubectl delete pod -l app=loadgenerator
-      #     # wait for requests to come in
-      #     REQUEST_COUNT="0"
-      #     while [[ "$REQUEST_COUNT"  -lt "50"  ]]; do
-      #         sleep 5
-      #         REQUEST_COUNT=$(kubectl logs -l app=loadgenerator | grep Aggregated | awk '{print $2}')
-      #     done
-      #     # ensure there are no errors hitting endpoints
-      #     ERROR_COUNT=$(kubectl logs -l app=loadgenerator | grep Aggregated | awk '{print $3}' | sed "s/[(][^)]*[)]//g")
-      #     if [[ "$ERROR_COUNT" -gt "0" ]]; then
-      #       exit 1
-      #     fi
-      - name: Comment EXTERNAL_IP
-        timeout-minutes: 5
-        env:
-            COMMENTS_URL: ${{ github.event.pull_request.comments_url }}
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-            curl \
-              -X POST \
-              $COMMENTS_URL \
-              -H "Content-Type: application/json" \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              --data '{ "body": "🚲 PR staged at '"http://${EXTERNAL_IP}"'"}'
-            sleep 60
